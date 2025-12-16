@@ -5,12 +5,12 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import streamlit_authenticator as stauth
 
-# ====== Credentials met hashed wachtwoorden (wachtwoord voor alle accounts: school123) ======
+# ====== Credentials met hashed wachtwoorden (wachtwoord: school123 voor alle testaccounts) ======
 credentials = {
     "usernames": {
         "school1": {
             "name": "Basisschool De Regenboog",
-            "password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXe.WI/1/Aob0gE0i1yU5h/.V9uM7S89w."  # hashed school123
+            "password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXe.WI/1/Aob0gE0i1yU5h/.V9uM7S89w."  # hashed "school123"
         },
         "school2": {
             "name": "Montessori Lyceum",
@@ -24,20 +24,17 @@ credentials = {
 }
 
 authenticator = stauth.Authenticate(
-    credentials=credentials,
-    cookie_name="school_dashboard_cookie",
-    key="random_signature_key_school_2025",  # Verander later naar iets geheims
-    cookie_expiry_days=30
+    credentials,
+    "school_dashboard_cookie",
+    "random_signature_key_school_2025",  # Verander later naar iets unieks/geheims
+    30
 )
 
-# ====== Login met correcte keyword arguments ======
-name, authentication_status, username = authenticator.login(
-    "Inloggen bij SchoolSocial",  # Titel van het formulier
-    location="main"               # Keyword!
-)
+# ====== Login (positional arguments – dit werkt in de huidige versie) ======
+name, authentication_status, username = authenticator.login("Inloggen bij SchoolSocial", "main")
 
 if authentication_status:
-    authenticator.logout("Uitloggen", location="sidebar")
+    authenticator.logout("Uitloggen", "sidebar")
     school_naam = credentials["usernames"][username]["name"]
 
     st.set_page_config(page_title=f"{school_naam} Dashboard", page_icon="🏫", layout="wide")
@@ -58,25 +55,25 @@ if authentication_status:
     else:
         periode = [start_date, end_date]
 
-    # ====== Mock data (verschilt per school) ======
+    # ====== Mock data (verschilt per school voor demo) ======
     dates = pd.date_range(start=periode[0], end=periode[1], freq='D')
     platforms = ["Instagram", "TikTok", "Facebook"]
-    base_offset = 0 if "Regenboog" in school_naam else 1500 if "Montessori" in school_naam else 3000
+    base_offset = 0 if "Regenboog" in school_naam else 1500 if "Montessori" in school_naam else 2800
 
     data = []
     for p in platforms:
         base_followers = 5000 + base_offset
-        growth = 70 if p == "TikTok" else 30
+        growth = 75 if p == "TikTok" else 32
         for i, date in enumerate(dates):
             data.append({
                 "Date": date,
                 "Platform": p,
                 "Followers": base_followers + i * growth,
-                "Engagement Rate (%)": 3.8 + (i % 7)*0.4 + (1.5 if p == "TikTok" else 0),
-                "Reach": 1300 + i * 40 + (i % 4)*150,
-                "Likes": 250 + i * 15,
-                "Comments": 30 + i * 4,
-                "Shares": 18 + i * 2
+                "Engagement Rate (%)": 4.0 + (i % 7)*0.5 + (1.8 if p == "TikTok" else 0),
+                "Reach": 1400 + i * 45 + (i % 4)*160,
+                "Likes": 280 + i * 18,
+                "Comments": 35 + i * 5,
+                "Shares": 20 + i * 3
             })
 
     df = pd.DataFrame(data)
@@ -120,8 +117,8 @@ if authentication_status:
     st.subheader("📊 Insights & Tips")
     if df['Platform'].nunique() > 1:
         best = df.groupby('Platform')['Engagement Rate (%)'].mean().idxmax()
-        st.success(f"**Sterkste platform:** {best}")
-    st.info("**Tip:** Video's op TikTok scoren goed bij scholen!")
+        st.success(f"**Sterkste platform:** {best} – focus hier meer op!")
+    st.info("**Tip:** Video's op TikTok scoren goed bij scholen! Post op dinsdag/donderdag.")
 
     st.subheader("📥 Exporteer je rapport")
     csv = df.to_csv(index=False).encode()
@@ -134,7 +131,6 @@ elif authentication_status == False:
 elif authentication_status is None:
     st.warning("Vul je inloggegevens in")
 
-# Testaccounts (wachtwoord voor alle: school123)
-# - school1 → Basisschool De Regenboog
-# - school2 → Montessori Lyceum
-# - school3 → Christelijke School De Ark
+# Testaccounts:
+# Gebruikersnaam: school1, school2 of school3
+# Wachtwoord: school123 (voor alle drie)
