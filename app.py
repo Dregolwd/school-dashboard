@@ -17,9 +17,22 @@ Hier zie je overzichtelijk hoe je school presteert op Instagram, TikTok en ander
 
 # Sidebar voor filters
 st.sidebar.header("Filters")
-platform = st.sidebar.selectbox("Kies platform", ["Instagram", "TikTok", "Alle platforms"])
-periode = st.sidebar.date_range_picker("Selecteer periode", 
-                                      default_value=[datetime.today() - timedelta(days=30), datetime.today()])
+platform = st.sidebar.selectbox("Kies platform", ["Instagram", "TikTok", "Facebook", "Alle platforms"])
+
+# Veilige date range picker (werkt op alle Streamlit versies)
+today = datetime.today().date()
+start_date_default = today - timedelta(days=30)
+end_date_default = today
+
+start_date = st.sidebar.date_input("Startdatum", value=start_date_default)
+end_date = st.sidebar.date_input("Einddatum", value=end_date_default)
+
+# Zorg dat start niet na end komt
+if start_date > end_date:
+    st.sidebar.error("Fout: Startdatum mag niet na einddatum liggen.")
+    periode = [end_date_default - timedelta(days=30), end_date_default]
+else:
+    periode = [start_date, end_date]
 
 # Mock data genereren
 dates = pd.date_range(start=periode[0], end=periode[1], freq='D')
