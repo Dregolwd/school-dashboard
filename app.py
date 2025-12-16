@@ -87,8 +87,8 @@ st.plotly_chart(fig_eng, use_container_width=True)
 
 st.subheader("Reach & Likes")
 fig_reach = go.Figure()
-fig_reach.add_trace(go.Scatter(x=df["Date"], y="Reach", mode='lines+markers', name='Reach'))
-fig_reach.add_trace(go.Bar(x=df["Date"], y="Likes", name='Likes'))
+fig_reach.add_trace(go.Scatter(x=df["Date"], y=df["Reach"], mode='lines+markers', name='Reach'))
+fig_reach.add_trace(go.Bar(x=df["Date"], y=df["Likes"], name='Likes'))
 st.plotly_chart(fig_reach, use_container_width=True)
 
 st.subheader("Beste dagen om te posten")
@@ -96,7 +96,7 @@ weekday_eng = df.groupby('Weekday')['Engagement Rate (%)'].mean().reindex(['Mond
 fig_week = px.bar(x=weekday_eng.index, y=weekday_eng.values, labels={'y': 'Engagement Rate (%)'})
 st.plotly_chart(fig_week, use_container_width=True)
 
-# ====== Insights & Tips (veilig – geen crash) ======
+# ====== Insights & Tips (volledig veilig – geen crash meer) ======
 st.subheader("📊 Insights & Tips")
 if df['Platform'].nunique() > 1:
     best = df.groupby('Platform')['Engagement Rate (%)'].mean().idxmax()
@@ -106,12 +106,14 @@ tiktok_df = df[df['Platform'] == 'TikTok']
 if not tiktok_df.empty and len(tiktok_df) > 1:
     tiktok_growth = tiktok_df['Followers'].iloc[-1] - tiktok_df['Followers'].iloc[0]
     st.info(f"**TikTok groei:** +{int(tiktok_growth)} followers in deze periode!")
+else:
+    st.info("**TikTok tip:** Kies 'Alle platforms' of 'TikTok' om groeidata te zien.")
 
-st.info("**Tip:** Video's op TikTok scoren het best bij scholen. Post op dinsdag of donderdag!")
+st.info("**Algemene tip:** Video's op TikTok scoren het best bij scholen. Post op dinsdag of donderdag!")
 
 # ====== Export ======
 st.subheader("📥 Exporteer je rapport")
 csv = df.to_csv(index=False).encode()
 st.download_button("Download data als CSV", csv, "social_data.csv", "text/csv")
 
-st.caption("Dashboard klaar voor demo's – volgende stap: echte data of AI met ComfyUI! 🚀")
+st.caption("Dashboard 100% stabiel – klaar voor demo's aan scholen! 🚀")
