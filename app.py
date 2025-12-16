@@ -3,6 +3,12 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib import colors
+from reportlab.lib.units import cm
 
 # Pagina configuratie
 st.set_page_config(page_title="SchoolSocial Dashboard", page_icon="🏫", layout="wide")
@@ -12,8 +18,11 @@ st.sidebar.header("School instellingen")
 school_naam = st.sidebar.text_input("Schoolnaam", value="Jouw Basisschool")
 school_logo = st.sidebar.text_input("Logo URL (optioneel)", value="https://via.placeholder.com/150?text=🏫")
 
-if school_logo:
-    st.sidebar.image(school_logo, width=150)
+if school_logo and "placeholder" not in school_logo:
+    try:
+        st.sidebar.image(school_logo, width=150)
+    except:
+        pass
 st.sidebar.markdown(f"**{school_naam}**")
 
 st.sidebar.header("Filters")
@@ -40,7 +49,7 @@ Hier zie je overzichtelijk hoe je school presteert op Instagram, TikTok en ander
 # ====== Mock data (verschilt per schoolnaam) ======
 dates = pd.date_range(start=periode[0], end=periode[1], freq='D')
 platforms = ["Instagram", "TikTok", "Facebook"]
-base_offset = len(school_naam) * 100  # Variatie op basis van naam
+base_offset = len(school_naam) * 100
 
 data = []
 for p in platforms:
@@ -91,12 +100,35 @@ fig_reach.add_trace(go.Scatter(x=df["Date"], y=df["Reach"], mode='lines+markers'
 fig_reach.add_trace(go.Bar(x=df["Date"], y=df["Likes"], name='Likes'))
 st.plotly_chart(fig_reach, use_container_width=True)
 
-st.subheader("Beste dagen om te posten")
+st.subheader("🕒 Beste tijd om te posten")
 weekday_eng = df.groupby('Weekday')['Engagement Rate (%)'].mean().reindex(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], fill_value=0)
-fig_week = px.bar(x=weekday_eng.index, y=weekday_eng.values, labels={'y': 'Engagement Rate (%)'})
-st.plotly_chart(fig_week, use_container_width=True)
+best_day = weekday_eng.idxmax()
+best_value = weekday_eng.max()
 
-# ====== Insights & Tips (volledig veilig – geen crash meer) ======
+st.write(f"**Beste dag:** {best_day} (gem. {best_value:.1f}% engagement)")
+st.info("Tip: Post tussen 15:00 - 17:00 uur voor maximaal bereik bij ouders, of 12:00 - 14:00 voor leerlingen.")
+
+# ====== Engagement trend alert ======
+engagement_trend = df["Engagement Rate (%)"].pct_change().mean()
+if engagement_trend < -0.05:
+    st.error("⚠️ Let op: Engagement daalt de laatste periode. Overweeg meer video-content!")
+elif engagement_trend > 0.05:
+    st.success("✅ Goed bezig! Engagement stijgt!")
+
+# ====== Top 5 best presterende posts ======
+st.subheader("📈 Top 5 best presterende posts")
+top_posts = pd.DataFrame({
+    "Post": ["Open Dag 2025", "Sportdag video", "Leerling succesverhaal", "Kerstgroet", "Nieuwe inschrijvingen"],
+    "Datum": ["10-12-2025", "05-12-2025", "28-11-2025", "20-11-2025", "15-11-2025"],
+    "Platform": ["Instagram", "TikTok", "Instagram", "Facebook", "Instagram"],
+    "Likes": [620, 890, 510, 420, 580],
+    "Comments": [78, 145, 56, 48, 72],
+    "Reach": [12000, 18000, 9800, 8500, 11000]
+}).sort_values("Reach", ascending=False)
+
+st.dataframe(top_posts.style.highlight_max(axis=0), use_container_width=True)
+
+# ====== Insights & Tips ======
 st.subheader("📊 Insights & Tips")
 if df['Platform'].nunique() > 1:
     best = df.groupby('Platform')['Engagement Rate (%)'].mean().idxmax()
@@ -111,28 +143,16 @@ else:
 
 st.info("**Algemene tip:** Video's op TikTok scoren het best bij scholen. Post op dinsdag of donderdag!")
 
-# ====== Export ======
-st.subheader("📥 Exporteer je rapport")
-csv = df.to_csv(index=False).encode()
-st.download_button("Download data als CSV", csv, "social_data.csv", "text/csv")
-
-st.caption("Dashboard 100% stabiel – klaar voor demo's aan scholen! 🚀")
-from io import BytesIO
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.lib import colors
-from reportlab.lib.units import cm
-
+# ====== PDF-rapport genereren ======
 st.subheader("📄 Genereer PDF-rapport")
 
-if st.button("Download PDF-rapport"):
+if st.button("Maak PDF-rapport"):
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=2*cm, leftMargin=2*cm, topMargin=2*cm, bottomMargin=2*cm)
     styles = getSampleStyleSheet()
     story = []
 
-    # Logo (als ingevuld)
+    # Logo
     if school_logo and "placeholder" not in school_logo:
         try:
             story.append(Image(school_logo, width=3*cm, height=3*cm))
@@ -167,7 +187,7 @@ if st.button("Download PDF-rapport"):
     story.append(Spacer(1, 1*cm))
 
     # Insights
-    story.append(Paragraph("<b>Insights</b>", styles["Heading2"]))
+    story.append(Paragraph("<b>Insights & Tips</b>", styles["Heading2"]))
     if df['Platform'].nunique() > 1:
         best = df.groupby('Platform')['Engagement Rate (%)'].mean().idxmax()
         story.append(Paragraph(f"• Sterkste platform: <b>{best}</b>", styles["Normal"]))
@@ -185,3 +205,10 @@ if st.button("Download PDF-rapport"):
         file_name=f"Social_Rapport_{school_naam.replace(' ', '_')}_{periode[1].strftime('%Y%m%d')}.pdf",
         mime="application/pdf"
     )
+
+# ====== Export CSV ======
+st.subheader("📥 Exporteer ruwe data")
+csv = df.to_csv(index=False).encode()
+st.download_button("Download data als CSV", csv, "social_data.csv", "text/csv")
+
+st.caption("Dashboard uitgebreid met PDF-rapport, top posts, alerts en meer – klaar voor scholen! 🚀")
