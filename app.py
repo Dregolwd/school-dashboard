@@ -5,65 +5,57 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import streamlit_authenticator as stauth
 import yaml
-from yaml.loader import SafeLoader
 
-# ====== Authenticator setup (test gebruikers) ======
-# Dit is een simpele yaml-config met test-users
-config = {
-    'credentials': {
-        'usernames': {
-            'school1': {
-                'email': 'school1@demo.nl',
-                'name': 'Basisschool De Regenboog',
-                'password': 'school123'  # In productie hashed!
-            },
-            'school2': {
-                'email': 'school2@demo.nl',
-                'name': 'Montessori Lyceum',
-                'password': 'school123'
-            },
-            'school3': {
-                'email': 'school3@demo.nl',
-                'name': 'Christelijke School De Ark',
-                'password': 'school123'
-            }
+# ====== Authenticator configuratie met testgebruikers ======
+credentials = {
+    "usernames": {
+        "school1": {
+            "email": "school1@demo.nl",
+            "name": "Basisschool De Regenboog",
+            "password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXe.WI/1/Aob0gE0i1yU5h/.V9uM7S89w."  # hashed "school123"
+        },
+        "school2": {
+            "email": "school2@demo.nl",
+            "name": "Montessori Lyceum",
+            "password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXe.WI/1/Aob0gE0i1yU5h/.V9uM7S89w."  # hashed "school123"
+        },
+        "school3": {
+            "email": "school3@demo.nl",
+            "name": "Christelijke School De Ark",
+            "password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXe.WI/1/Aob0gE0i1yU5h/.V9uM7S89w."  # hashed "school123"
         }
-    },
-    'cookie': {
-        'expiry_days': 30,
-        'key': 'random_signature_key',  # Vervang later door een geheime key
-        'name': 'school_dashboard_cookie'
-    },
-    'preauthorized': None
+    }
 }
 
-# Hashed passwords (voor productie), maar voor nu plain text (werkt alleen lokaal/online met deze lib)
-# In echte versie gebruik je stauth.Hasher om wachtwoorden te hashen
+cookie = {
+    'expiry_days': 30,
+    'key': 'random_signature_key_for_school_dashboard',  # Vervang later door een geheime sleutel
+    'name': 'school_dashboard_cookie'
+}
+
 authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days']
+    credentials,
+    cookie['name'],
+    cookie['key'],
+    cookie['expiry_days']
 )
 
-# ====== Login ======
-name, authentication_status, username = authenticator.login('Inloggen', 'main')
+# ====== Login (correcte nieuwe syntax) ======
+name, authentication_status, username = authenticator.login(fields={'Form name': 'Inloggen bij SchoolSocial'}, location='main')
 
 if authentication_status:
-    # ====== Welkom na login ======
-    school_naam = config['credentials']['usernames'][username]['name']
+    # ====== Ingelogd – toon dashboard ======
+    school_naam = credentials['usernames'][username]['name']
     st.sidebar.success(f"Welkom {name}!")
-    authenticator.logout('Uitloggen', 'sidebar')
+    authenticator.logout("Uitloggen", "sidebar")
 
-    # Pagina config
-    st.set_page_config(page_title=f"{school_naam} Dashboard", page_icon="🏫", layout="wide")
+    st.set_page_config(page_title=f"{school_naam} - Dashboard", page_icon="🏫", layout="wide")
     st.title(f"🏫 {school_naam} Social Dashboard")
 
-    # ====== Filters in sidebar ======
+    # Sidebar filters
     st.sidebar.header("Filters")
     platform = st.sidebar.selectbox("Kies platform", ["Instagram", "TikTok", "Facebook", "Alle platforms"])
 
-    # Datumselectie
     today = datetime.today().date()
     start_date_default = today - timedelta(days=30)
     end_date_default = today
@@ -77,24 +69,25 @@ if authentication_status:
     else:
         periode = [start_date, end_date]
 
-    # ====== Mock data (per school iets anders voor demo) ======
+    # ====== Mock data (iets anders per school voor realistisch gevoel) ======
     dates = pd.date_range(start=periode[0], end=periode[1], freq='D')
     platforms = ["Instagram", "TikTok", "Facebook"]
 
     data = []
+    base_offset = 0 if "Regenboog" in school_naam else 1500 if "Montessori" in school_naam else 3000
     for p in platforms:
-        base_followers = 5000 + (1000 if 'Regenboog' in school_naam else 2000 if 'Montessori' in school_naam else 3000)
-        growth_factor = 50 if p == "TikTok" else 20
+        base_followers = 5000 + base_offset
+        growth = 60 if p == "TikTok" else 25
         for i, date in enumerate(dates):
             data.append({
                 "Date": date,
                 "Platform": p,
-                "Followers": base_followers + i * growth_factor + (500 if username == 'school3' else 0),
-                "Engagement Rate (%)": 3.5 + (i % 7) * 0.5 + (1 if p == "TikTok" else 0),
-                "Reach": 1000 + i * 30 + (i % 5)*100,
-                "Likes": 200 + i * 10,
-                "Comments": 20 + i * 2,
-                "Shares": 10 + i * 1
+                "Followers": base_followers + i * growth,
+                "Engagement Rate (%)": 3.5 + (i % 7)*0.4 + (1.2 if p == "TikTok" else 0),
+                "Reach": 1200 + i * 35 + (i % 4)*120,
+                "Likes": 220 + i * 12,
+                "Comments": 25 + i * 3,
+                "Shares": 15 + i * 2
             })
 
     df = pd.DataFrame(data)
@@ -103,9 +96,7 @@ if authentication_status:
     if platform != "Alle platforms":
         df = df[df["Platform"] == platform]
 
-    # ====== De rest van je dashboard (metrics, grafieken, etc.) ======
-    # (Kopieer hier alles vanaf de key metrics uit de vorige versie)
-
+    # ====== Metrics ======
     col1, col2, col3, col4 = st.columns(4)
     total_followers = df["Followers"].iloc[-1] if not df.empty else 0
     total_engagement = df["Engagement Rate (%)"].mean() if not df.empty else 0
@@ -117,26 +108,48 @@ if authentication_status:
     col3.metric("Totale Reach", f"{int(total_reach):,}")
     col4.metric("Totale Interacties", f"{int(total_interactions):,}")
 
-    # Grafieken (zelfde als voorheen)
-    st.subheader("Followers groei")
-    fig = px.line(df, x="Date", y="Followers", color="Platform")
+    # ====== Grafieken ======
+    st.subheader("Followers groei over tijd")
+    fig = px.line(df, x="Date", y="Followers", color="Platform", title="Followers ontwikkeling")
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Engagement Rate")
     fig_eng = px.bar(df, x="Date", y="Engagement Rate (%)", color="Platform")
     st.plotly_chart(fig_eng, use_container_width=True)
 
-    # Voeg hier de rest toe: insights, benchmarks, export, etc. (ik hou het kort voor nu)
+    st.subheader("Reach & Likes")
+    fig_reach = go.Figure()
+    fig_reach.add_trace(go.Scatter(x=df["Date"], y=df["Reach"], mode='lines+markers', name='Reach'))
+    fig_reach.add_trace(go.Bar(x=df["Date"], y=df["Likes"], name='Likes'))
+    st.plotly_chart(fig_reach, use_container_width=True)
 
-    st.success("Je bent ingelogd! Dit zijn jouw schoolgegevens.")
-    st.caption("MVP met login – volgende stap: echte social media koppelingen per school!")
+    # ====== Beste dagen ======
+    st.subheader("Beste dagen om te posten")
+    weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    weekday_eng = df.groupby('Weekday')['Engagement Rate (%)'].mean().reindex(weekday_order, fill_value=0)
+    fig_week = px.bar(x=weekday_eng.index, y=weekday_eng.values, labels={'x': 'Dag', 'y': 'Engagement Rate (%)'})
+    st.plotly_chart(fig_week, use_container_width=True)
+
+    # ====== Insights ======
+    st.subheader("📊 Automatische Insights & Tips")
+    if df['Platform'].nunique() > 1:
+        best = df.groupby('Platform')['Engagement Rate (%)'].mean().idxmax()
+        st.success(f"Sterkste platform: **{best}**")
+    st.info("Tip: Video's op TikTok scoren goed bij scholen!")
+
+    # ====== Export ======
+    st.subheader("📥 Exporteer rapport")
+    csv = df.to_csv(index=False).encode()
+    st.download_button("Download data als CSV", csv, "social_data.csv", "text/csv")
+
+    st.caption("MVP met login – klaar voor echte data per school!")
 
 elif authentication_status is False:
-    st.error('Verkeerde gebruikersnaam of wachtwoord')
+    st.error("Verkeerde gebruikersnaam of wachtwoord")
 elif authentication_status is None:
-    st.warning('Vul je inloggegevens in')
+    st.warning("Vul je inloggegevens in")
 
-# Test accounts:
-# - school1 / school123 → Basisschool De Regenboog
-# - school2 / school123 → Montessori Lyceum
-# - school3 / school123 → Christelijke School De Ark
+# Test inloggegevens (wachtwoord voor alle drie: school123)
+# - school1 → Basisschool De Regenboog
+# - school2 → Montessori Lyceum
+# - school3 → Christelijke School De Ark
