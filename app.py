@@ -19,7 +19,7 @@ st.sidebar.markdown(f"**{school_naam}**")
 st.sidebar.header("Filters")
 platform = st.sidebar.selectbox("Kies platform", ["Instagram", "TikTok", "Facebook", "Alle platforms"])
 
-# Datumselectie (veilig en compatibel)
+# Datumselectie (veilig)
 today = datetime.today().date()
 start_date_default = today - timedelta(days=30)
 end_date_default = today
@@ -62,7 +62,7 @@ for p in platforms:
 
 df = pd.DataFrame(data)
 
-# Extra kolommen voor analyses
+# Extra kolommen
 df['Weekday'] = df['Date'].dt.day_name()
 df['Hour'] = (df['Date'].dt.hour + 10) % 24  # Mock posts tussen 10-18 uur
 
@@ -98,7 +98,7 @@ fig_reach.add_trace(go.Bar(x=df["Date"], y=df["Likes"], name='Likes'))
 fig_reach.update_layout(title="Reach vs Likes")
 st.plotly_chart(fig_reach, use_container_width=True)
 
-# ====== Beste postmomenten ======
+# ====== Beste postdagen ======
 st.subheader("Beste dagen om te posten")
 weekday_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 weekday_eng = df.groupby('Weekday')['Engagement Rate (%)'].mean().reindex(weekday_order, fill_value=0)
@@ -107,22 +107,34 @@ fig_weekday = px.bar(x=weekday_eng.index, y=weekday_eng.values,
                      labels={'x': 'Dag', 'y': 'Engagement Rate (%)'})
 st.plotly_chart(fig_weekday, use_container_width=True)
 
-# ====== Insights & Tips ======
+# ====== Insights & Tips (nu veilig) ======
 st.subheader("📊 Automatische Insights & Tips")
-best_platform = df.groupby('Platform')['Engagement Rate (%)'].mean().idxmax()
-worst_platform = df.groupby('Platform')['Engagement Rate (%)'].mean().idxmin()
-tiktok_growth = df[df['Platform'] == 'TikTok']['Followers'].iloc[-1] - df[df['Platform'] == 'TikTok']['Followers'].iloc[0]
 
-st.success(f"**Sterkste platform:** {best_platform} – focus hier meer op!")
-st.warning(f"**Verbeterpunt:** {worst_platform} heeft lagere engagement.")
-st.info(f"**TikTok groeit hard:** +{int(tiktok_growth)} followers in deze periode!")
-st.info("**Tip:** Post meer video's op dinsdag en donderdag rond 15-17 uur voor maximaal bereik (op basis van mock data).")
+# Beste en slechtste platform (alleen als er meerdere platforms zijn)
+if df['Platform'].nunique() > 1:
+    best_platform = df.groupby('Platform')['Engagement Rate (%)'].mean().idxmax()
+    worst_platform = df.groupby('Platform')['Engagement Rate (%)'].mean().idxmin()
+    st.success(f"**Sterkste platform:** {best_platform} – focus hier meer op!")
+    st.warning(f"**Verbeterpunt:** {worst_platform} heeft lagere engagement.")
+else:
+    st.info("**Tip:** Kies 'Alle platforms' om vergelijkingen tussen platforms te zien.")
+
+# TikTok groei (alleen als TikTok in de data zit)
+tiktok_df = df[df['Platform'] == 'TikTok']
+if not tiktok_df.empty and len(tiktok_df) > 1:
+    tiktok_growth = tiktok_df['Followers'].iloc[-1] - tiktok_df['Followers'].iloc[0]
+    st.info(f"**TikTok groeit hard:** +{int(tiktok_growth)} followers in deze periode!")
+else:
+    st.info("**Tip:** TikTok data wordt getoond bij 'Alle platforms' of als je TikTok selecteert.")
+
+st.info("**Algemene tip:** Post meer video's op dinsdag en donderdag rond 15-17 uur voor maximaal bereik (op basis van mock data).")
 
 # ====== Benchmark vergelijking ======
 st.subheader("📈 Hoe doe je het t.o.v. gemiddelde scholen?")
+avg_reach_per_post = total_reach / len(df) if len(df) > 0 else 0
 benchmark_data = {
     "Metric": ["Gem. Engagement Rate", "Wekelijkse groei followers", "Gem. Reach per post"],
-    "Jouw school": [round(total_engagement, 1), 120, round(total_reach / len(df), 0) if len(df) > 0 else 0],
+    "Jouw school": [round(total_engagement, 1), 120, round(avg_reach_per_post)],
     "Gemiddelde school": [2.8, 80, 3200]
 }
 bench_df = pd.DataFrame(benchmark_data)
@@ -146,18 +158,18 @@ st.subheader("📥 Exporteer je rapport")
 csv = df.to_csv(index=False).encode()
 st.download_button("Download data als CSV", csv, "social_data.csv", "text/csv")
 
+best_platform_safe = df.groupby('Platform')['Engagement Rate (%)'].mean().idxmax() if not df.empty else "Onbekend"
 rapport = f"""
 # Social Media Rapport - {school_naam}
 Periode: {periode[0]} t/m {periode[1]}
 
 Totale followers: {int(total_followers):,}
 Gemiddelde engagement: {total_engagement:.1f}%
-Beste platform: {best_platform}
-TikTok groei: +{int(tiktok_growth)} followers
+Beste platform: {best_platform_safe}
 
 Gegenereerd op {datetime.today().strftime('%d-%m-%Y')}
 """
 st.download_button("Download rapport als tekst", rapport, "rapport.txt", "text/plain")
 
 st.markdown("---")
-st.caption("MVP gebouwd met ❤️ door jou & Grok – Klaar voor echte social media koppelingen!")
+st.caption("MVP gebouwd met ❤️ door jou & Grok – Nu crash-vrij en klaar voor de volgende stap!")
