@@ -30,11 +30,11 @@ authenticator = stauth.Authenticate(
     cookie_expiry_days=30
 )
 
-# ====== Login (correcte syntax voor versie 0.4.2 – alleen titel, geen location) ======
-authenticator.login("Inloggen bij SchoolSocial")
+# ====== Login (correcte syntax voor versie 0.4.2: titel + location als positional) ======
+authenticator.login("Inloggen bij SchoolSocial", "main")
 
 if st.session_state["authentication_status"]:
-    authenticator.logout("Uitloggen", location="sidebar")
+    authenticator.logout("Uitloggen", "sidebar")
     school_naam = st.session_state["name"]
 
     st.set_page_config(page_title=f"{school_naam} Dashboard", page_icon="🏫", layout="wide")
