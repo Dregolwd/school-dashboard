@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import streamlit_authenticator as stauth
 
-# ====== Credentials met hashed wachtwoorden (wachtwoord: school123 voor alle testaccounts) ======
+# ====== Testgebruikers met hashed wachtwoorden (wachtwoord voor alle: school123) ======
 credentials = {
     "usernames": {
         "school1": {
@@ -26,11 +26,11 @@ credentials = {
 authenticator = stauth.Authenticate(
     credentials,
     "school_dashboard_cookie",
-    "random_signature_key_school_2025",  # Verander later naar iets geheims
-    30
+    "random_signature_key_school_2025",  # Later vervangen door iets geheims
+    cookie_expiry_days=30
 )
 
-# ====== Login (nieuwste syntax: geen parameters, alles via session_state) ======
+# ====== Login (correcte syntax voor versie 0.4.2) ======
 authenticator.login()
 
 if st.session_state["authentication_status"]:
@@ -94,25 +94,25 @@ if st.session_state["authentication_status"]:
     col3.metric("Totale Reach", f"{int(total_reach):,}")
     col4.metric("Totale Interacties", f"{int(total_interactions):,}")
 
-    # ====== Grafieken (met nieuwe width='stretch') ======
+    # ====== Grafieken ======
     st.subheader("Followers groei over tijd")
     fig = px.line(df, x="Date", y="Followers", color="Platform")
-    st.plotly_chart(fig, use_container_width=True, width='stretch')
+    st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("Engagement Rate")
     fig_eng = px.bar(df, x="Date", y="Engagement Rate (%)", color="Platform")
-    st.plotly_chart(fig_eng, use_container_width=True, width='stretch')
+    st.plotly_chart(fig_eng, use_container_width=True)
 
     st.subheader("Reach & Likes")
     fig_reach = go.Figure()
     fig_reach.add_trace(go.Scatter(x=df["Date"], y=df["Reach"], mode='lines+markers', name='Reach'))
     fig_reach.add_trace(go.Bar(x=df["Date"], y=df["Likes"], name='Likes'))
-    st.plotly_chart(fig_reach, use_container_width=True, width='stretch')
+    st.plotly_chart(fig_reach, use_container_width=True)
 
     st.subheader("Beste dagen om te posten")
     weekday_eng = df.groupby('Weekday')['Engagement Rate (%)'].mean().reindex(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], fill_value=0)
     fig_week = px.bar(x=weekday_eng.index, y=weekday_eng.values, labels={'y': 'Engagement Rate (%)'})
-    st.plotly_chart(fig_week, use_container_width=True, width='stretch')
+    st.plotly_chart(fig_week, use_container_width=True)
 
     # ====== Insights & Tips (veilig) ======
     st.subheader("📊 Insights & Tips")
@@ -141,4 +141,4 @@ elif st.session_state["authentication_status"] is None:
 
 # Testaccounts:
 # Gebruikersnaam: school1, school2 of school3
-# Wachtwoord: school123
+# Wachtwoord: school123 (voor alle drie)
