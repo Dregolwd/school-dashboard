@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import streamlit_authenticator as stauth
 
-# ====== Testgebruikers met hashed wachtwoorden (wachtwoord voor alle: school123) ======
+# ====== Testgebruikers (wachtwoord voor alle: school123) ======
 credentials = {
     "usernames": {
         "school1": {
@@ -26,12 +26,12 @@ credentials = {
 authenticator = stauth.Authenticate(
     credentials,
     "school_dashboard_cookie",
-    "random_signature_key_school_2025",  # Later vervangen door iets geheims
+    "random_signature_key_school_2025",
     cookie_expiry_days=30
 )
 
-# ====== Login (correcte syntax voor versie 0.4.2) ======
-authenticator.login()
+# ====== Login (correcte syntax voor versie 0.4.2 – alleen titel, geen location) ======
+authenticator.login("Inloggen bij SchoolSocial")
 
 if st.session_state["authentication_status"]:
     authenticator.logout("Uitloggen", location="sidebar")
@@ -141,4 +141,4 @@ elif st.session_state["authentication_status"] is None:
 
 # Testaccounts:
 # Gebruikersnaam: school1, school2 of school3
-# Wachtwoord: school123 (voor alle drie)
+# Wachtwoord: school123
